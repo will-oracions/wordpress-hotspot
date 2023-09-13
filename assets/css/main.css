@@ -1,0 +1,129 @@
+.app-custom-loader {
+	width: 20px;
+	height: 20px;
+	border-radius: 50%;
+	border: 3px solid #ffffff;
+	animation: spinner-bulqg1 0.8s infinite linear alternate,
+		spinner-oaa3wk 1.6s infinite linear;
+	margin: auto;
+}
+
+.HotspotPlugin_Hotspot > div {
+	display: none !important;
+}
+
+#theElement-0 {
+	position: relative;
+	margin-bottom: 1rem;
+}
+
+#preview-spot-wrapper {
+	display: none;
+}
+
+:root {
+	--black: #18191b;
+	--black-second: #242527;
+
+	--gray: #dfe0e2;
+}
+
+.app-st-container {
+	background-color: var(--black);
+	padding: 4rem;
+}
+
+.app-st-box-wrapper {
+	margin-top: 4rem;
+	position: relative;
+	width: 100%;
+	max-width: 600px;
+	height: fit-content;
+	background-color: var(--black-second);
+	color: var(--gray);
+}
+
+.app-st-box-header {
+	position: relative;
+	background-color: transparent;
+	padding: 0.5rem 1.5rem;
+}
+.app-st-box-header .app-st-box-close-btn {
+	position: absolute;
+	right: 1rem;
+	top: 0;
+	cursor: pointer;
+	padding: 0.4rem;
+}
+
+.app-st-box-header .app-st-box-title {
+	font-weight: bold;
+	padding-bottom: 1rem;
+	text-transform: capitalize;
+}
+
+.app-st-box-content {
+	padding: 1rem;
+	padding-top: 0;
+	display: flex;
+	justify-content: flex-between;
+	align-items: flex-start;
+}
+
+.app-st-box-content .app-st-box-content-image {
+	width: 100%;
+	max-width: 200px;
+}
+
+.app-st-box-content .app-st-box-content-image img {
+	width: 100%;
+	height: auto;
+}
+
+.app-st-box-content .app-st-box-content-text {
+	flex: 1;
+	margin-left: 1rem;
+}
+
+.app-hotspot {
+	/*  */
+}
+
+.app-active-hotspot {
+	background-color: red !important;
+}
+
+#TB_window {
+	background-color: #242527!important;
+	color: white;
+}
+
+#TB_title {
+	background-color: #333333!important;
+	color: white;
+	border-color: #787A7C;
+
+}
+
+#spot-modal {
+	background-color: #333;
+	border-radius: 4px;
+	/* min-height: 400px; */
+	color: white;
+	margin: auto;
+	z-index: 99;
+}
+
+.jquery-modal.blocker.current {
+	z-index: 99;
+}
+
+#close-modal {
+	background-color: #242527!important;
+}
+
+@media screen and (max-width: 770px) {
+	.product_title.entry-title {
+		display: inline;
+	}
+}

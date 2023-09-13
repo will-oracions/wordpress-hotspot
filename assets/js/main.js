@@ -142,7 +142,7 @@
     }
 
     previewHotspot(locationId, inMobileScreen = true) {
-      console.log("Preview spot: ", locationId);
+      // console.log("Preview spot: ", locationId);
 
       const hotspot = this.hotspots.find(
         (spot) => spot.locationId === locationId
@@ -153,7 +153,7 @@
         return;
       }
 
-      console.log("PREVIEW HOTSPOT", hotspot);
+      // console.log("PREVIEW HOTSPOT", hotspot);
 
       this.previewSpotTitle.text(hotspot.title);
       this.previewSpotDesc.html(hotspot.description);
@@ -184,7 +184,7 @@
       // $("#spot-modal").modal();
 
       const modalBox = $("#spot-modal");
-      console.log("Modal box: ", modalBox);
+      // console.log("Modal box: ", modalBox);
       modalBox.modal();
     }
 

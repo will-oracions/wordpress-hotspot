@@ -112,6 +112,7 @@
 	color: white;
 	margin: auto;
 	z-index: 99;
+	font-family: 'futura_ptbook';
 }
 
 .jquery-modal.blocker.current {

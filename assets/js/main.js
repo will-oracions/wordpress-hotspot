@@ -155,23 +155,28 @@
 
       // console.log("PREVIEW HOTSPOT", hotspot);
 
-      this.previewSpotTitle.text(hotspot.title);
-      this.previewSpotDesc.html(hotspot.description);
       const image = hotspot.image;
-      this.previewSpotDescImage.attr("src", image.url);
-      // console.log(previewSpotDescImage, image.url);
-      this.previewSpotWrapper.css("display", "block");
 
-      if (inMobileScreen && this.isMobileScreen()) {
-        const prewiewerTitle = $("#front-preview-spot-title");
-        const previewerDesc = $("#front-preview-spot-desc");
-        const previewerImage = $("#front-preview-spot-desc-image");
-        prewiewerTitle.text(hotspot.title);
-        previewerDesc.text(hotspot.description);
-        previewerImage.attr("src", image.url);
+      if (this.isMobileScreen()) {
+        if (inMobileScreen) {
+          const prewiewerTitle = $("#front-preview-spot-title");
+          const previewerDesc = $("#front-preview-spot-desc");
+          const previewerImage = $("#front-preview-spot-desc-image");
+          prewiewerTitle.text(hotspot.title);
+          previewerDesc.text(hotspot.description);
+          previewerImage.attr("src", image.url);
 
-        // open modal
-        this.openModal(hotspot.title);
+          this.previewSpotWrapper.css("display", "none");
+
+          // open modal
+          this.openModal(hotspot.title);
+        }
+      } else {
+        this.previewSpotTitle.text(hotspot.title);
+        this.previewSpotDesc.html(hotspot.description);
+        this.previewSpotDescImage.attr("src", image.url);
+        // console.log(previewSpotDescImage, image.url);
+        this.previewSpotWrapper.css("display", "block");
       }
     }
 

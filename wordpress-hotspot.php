@@ -16,6 +16,7 @@ if (!class_exists('Wordpress_Hotspot')) {
   {
     private $ROOT_URL = 'wordpress-hotspot/v1';
     private $SAVE_HOTSPOT_IMAGE_ROUTE = 'save-hotspot-image';
+    private $GET_HOTSPOT_IMAGE_ROUTE = 'get-hotspot-image';
 
     public function __construct()
     {
@@ -192,7 +193,16 @@ if (!class_exists('Wordpress_Hotspot')) {
         'permission_callback' => '__return_true',
       );
 
+      $args2 = array(
+        'methods' => 'GET',
+        'callback' => function ($data) {
+          return $this->get_hotspot_by_id($data['id']);
+        },
+        'permission_callback' => '__return_true',
+      );
+
       register_rest_route($this->ROOT_URL, $this->SAVE_HOTSPOT_IMAGE_ROUTE, $args, true);
+      register_rest_route($this->ROOT_URL, "$this->GET_HOTSPOT_IMAGE_ROUTE/(?P<id>\d+)", $args2, true);
     }
 
     public function handle_save_hotspot_image($data)
@@ -236,18 +246,27 @@ if (!class_exists('Wordpress_Hotspot')) {
       return new WP_REST_Response('Something wrong, please try later', 400);
     }
 
-    public function show_shortcode_template($atts, $content, $tag)
+    public function show_shortcode_template($attr, $content, $tag)
     {
-      $id = $atts['id'];
-      global $wpdb;
-      $table_name = $wpdb->prefix . WP_HOTSPOT_TABLE_NAME;
-      $data = $wpdb->get_results("SELECT * FROM $table_name WHERE id = " . $id);
+      $id = $attr['id'];
+      $get_hotspot_endpoint = get_rest_url() . "$this->ROOT_URL/$this->GET_HOTSPOT_IMAGE_ROUTE/$id";
 
+      $data = $this->get_hotspot_by_id($attr['id']);
 
       ob_start();
       include WORDPRESS_HOTSPOT_PLUGIN_PATH . 'inc/template/short-code-template.php';
       $html = ob_get_clean();
       return $html;
+    }
+
+    public function get_hotspot_by_id($id)
+    {
+      global $wpdb;
+      $table_name = $wpdb->prefix . WP_HOTSPOT_TABLE_NAME;
+      $data = $wpdb->get_results("SELECT * FROM $table_name WHERE id = " . $id);
+
+      if (!$data) return null;
+      return $data[0];
     }
   }
 

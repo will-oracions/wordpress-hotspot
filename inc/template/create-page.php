@@ -1,9 +1,15 @@
-<?php add_thickbox(); ?>
+<?php add_thickbox();
+
+if (!$data) return 'No image to display !';
+
+// $imageData = deserializeImageData($data);
+
+?>
 
 <style>
-.HotspotPlugin_Hotspot>div {
-  display: none !important;
-}
+  .HotspotPlugin_Hotspot>div {
+    display: none !important;
+  }
 </style>
 
 <!--  -->
@@ -17,10 +23,7 @@
   <h1><?php _e("Add new image") ?></h1>
 
   <!-- options.php -->
-  <form id="annotable-image-form"
-    data-annotatedImageHotspot='<?php if(isset($annotatedImageHotspot)) echo json_encode($annotatedImageHotspot) ?>'
-    data-page="<?php echo get_rest_url() . WORDPRESS_HOTSPOT_SAVE_IMAGE_ROUTE ?>" method="post" action=""
-    novalidate="novalidate" enctype="multipart/form-data">
+  <form id="annotable-image-form" data-get-hotspot-endpoint="<?php echo $get_hotspot_endpoint; ?>" data-get-hotspot-endpoint="<?php echo $get_hotspot_endpoint; ?>" data-annotatedImageHotspot='<?php if (isset($annotatedImageHotspot)) echo json_encode($annotatedImageHotspot) ?>' data-page="<?php echo get_rest_url() . WORDPRESS_HOTSPOT_SAVE_IMAGE_ROUTE ?>" method="post" action="" novalidate="novalidate" enctype="multipart/form-data">
     <!-- <input type="hidden" name="option_page" value="general"><input type="hidden" name="action" value="update"><input type="hidden" id="_wpnonce" name="_wpnonce" value="cb6b72d745"><input type="hidden" name="_wp_http_referer" value="/wp-admin/options-general.php"> -->
     <table class="form-table" role="presentation">
       <tbody>
@@ -66,35 +69,35 @@
     </table>
 
     <style>
-    #theElement-0 {
-      position: relative;
-      width: 200px;
-    }
+      #theElement-0 {
+        position: relative;
+        width: 200px;
+      }
 
-    #theElement-a {
-      width: 100%;
-      max-width: 800px;
-      border: 4px solid black;
-      position: relative;
-    }
+      #theElement-a {
+        width: 100%;
+        max-width: 800px;
+        border: 4px solid black;
+        position: relative;
+      }
 
-    #theElement-a img {
-      width: 100%;
-    }
+      #theElement-a img {
+        width: 100%;
+      }
 
-    .HotspotPlugin_Overlay p {
-      display: none !important;
-    }
+      .HotspotPlugin_Overlay p {
+        display: none !important;
+      }
 
-    .HotspotPlugin_Save {
-      /* display: none !important; */
-    }
+      .HotspotPlugin_Save {
+        /* display: none !important; */
+      }
 
-    .HotspotPlugin_Remove {
-      /* display: none !important; */
-    }
+      .HotspotPlugin_Remove {
+        /* display: none !important; */
+      }
 
-    .hotspot-edit-wrapper {}
+      .hotspot-edit-wrapper {}
     </style>
 
 
@@ -106,8 +109,7 @@
     </div>
 
     <!-- <p class="submit"> -->
-    <button id="save-annotated-image-btn" type="button" class="button button-primary button-large"
-      value="<?php _e("Save"); ?>">
+    <button id="save-annotated-image-btn" type="button" class="button button-primary button-large" value="<?php _e("Save"); ?>">
       <div id="btn-save-loader" class="app-custom-loader"></div>
       <div id="save-annotated-image-btn-text"><?php _e("Save Image"); ?></div>
     </button>

@@ -195,633 +195,655 @@
 // })(jQuery);
 
 jQuery(document).ready(function ($) {
-	// UI Elements
-	const uploadDescImageBtn = $("#upload-desc-image-btn");
-	const previewHotspotImage = $("#preview-hotspot-image");
-	const annotableImage = $("#annotatable-image");
-
-	const uploadHotspotImageBtn = $("#upload-hotspot-image-btn");
-	const saveHotspotBtn = $("#save-hotspot-btn");
-	const deleteHotspotBtn = $("#delete-hotspot-btn");
-	const saveAnnotatedImageBtn = $("#save-annotated-image-btn");
-	const saveAnnotatedImageBtnText = $("#save-annotated-image-btn-text");
-
-	const newSpotDescImage = $("#desc-hotspot-image");
-	const newSpotTitle = $("#spot-title");
-	const newSpotDesc = $("#spot-desc");
-	const annotatedImageNameInput = $("#annotated-image-name-input");
-
-	const editorWrapper = $("#theElement-a");
-	const previewerWrapper = $("#theElement-0");
-
-	// let previewHotSpots = $("#theElement-0 .HotspotPlugin_Hotspot");
-	const previewSpotWrapper = $("#preview-spot-wrapper");
-	const previewSpotTitle = $("#preview-spot-title");
-	const previewSpotDescImage = $("#preview-spot-desc-image");
-	const previewSpotDesc = $("#preview-spot-desc");
-	const previewSpotCloseBtn = $("#preview-spot-close-btn");
-	const btnSaveLoader = $("#btn-save-loader");
-	// const hotspotEditWrapper = $(".hotspot-edit-wrapper");
-
-	// const mainPage = $("#main-page");
-	// const dataImageId = $("#data-image-id");
-	// const imageId = dataImageId.attr("data-imageId");
-
-	// console.log("id: ", dataImageId, imageId);
-
-	const annotableImageForm = $("#annotable-image-form");
-	// Endponts
-	const actionPageUrl = annotableImageForm.attr("data-page");
-
-	// Variables
-	let hotspots = [];
-	let currentDescImage = null;
-	let currentX = null;
-	let currentY = null;
-	let annotableMediaImage = null;
-	let shortcode = getAnnotatedImageShortCode();
-
-	let loading = false;
-
-	// alert(shortcode);
-	const annotatedImageSerialized = annotableImageForm.attr(
-		"data-annotatedImageHotspot"
-	);
-	// console.log("element: ", annotatedImageSerialized);
-	let annotatedImageHotspot = null;
-	if (annotatedImageSerialized) {
-		annotatedImageHotspot = deserializeImageHotspot(annotatedImageSerialized);
-	}
-
-	console.log("AnnotatedImage: ", annotatedImageHotspot);
-
-	// Entry point
-	main();
-
-	// Utils functions
-	// -----------------------------------------
-	function bindMediaUploaderListeners(cb) {
-		var mediaUploader = wp.media({
-			frame: "post",
-			state: "insert",
-			multiple: false,
-		});
-
-		return mediaUploader.on("insert", function () {
-			var imageData = mediaUploader.state().get("selection").first().toJSON();
-
-			cb(imageData);
-		});
-	}
-
-	function throwIfNoImage(condition = !currentDescImage) {
-		if (condition) {
-			alert("There is no selected image");
-			return;
-		}
-	}
-
-	function uuidv4() {
-		return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, (c) =>
-			(
-				c ^
-				(crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))
-			).toString(16)
-		);
-	}
-
-	function setLoading(_) {
-		loading = _;
-		formatUI();
-	}
-
-	function toast(message, duration = 3000) {
-		Toastify({
-			text: message,
-			duration,
-			gravity: "bottom",
-			position: "right",
-			backgroundColor: "#1d2327",
-			stopOnFocus: true,
-		}).showToast();
-	}
-	// -----------------------------------------
-
-	// Functions
-	function formatUI() {
-		const btnSaveLoaderDisplay = loading ? "block" : "none";
-		const saveAnnotatedImageBtnTextDisplay = loading ? "none" : "block";
-		const btnSaveOpacity = loading ? 0.7 : 1;
-		const btnSaveText = loading ? "" : "Save Image";
-
-		// console.log(btnSaveLoader, btnSaveLoaderDisplay);
-
-		btnSaveLoader.css("display", btnSaveLoaderDisplay);
-		saveAnnotatedImageBtn.css("opacity", btnSaveOpacity);
-		// saveAnnotatedImageBtn.text(btnSaveText);
-		// saveAnnotatedImageBtnText.css("display", saveAnnotatedImageBtnTextDisplay);
-
-		if (currentDescImage) {
-			// editorWrapper.css("display", "block");
-			newSpotDescImage.attr("src", currentDescImage.url);
-		} else {
-			newSpotDescImage.attr("src", null);
-			// editorWrapper.css("display", "none");
-		}
-		setAnnotableMediaImage();
-	}
-
-	function deserializeImageHotspot(serialized) {
-		const image = JSON.parse(serialized);
-		const hotspots = JSON.parse(image.data);
-		const deserialized = {
-			...image,
-			hotspots,
-			// hotspots: hotspots.map((spot) => ({
-			// 	...spot,
-			// 	image: JSON.parse(spot.image),
-			// })),
-			annotatedImage: JSON.parse(image.annotated_image),
-		};
-		return deserialized;
-	}
-
-	function getHotspotByCoordonatesId(x, y) {
-		const locationId = getSpotLocationId(x, y);
-		return hotspots.find((spot) => spot.locationId === locationId);
-	}
-
-	function setAnnotableMediaImage() {
-		const imageUrl = annotableMediaImage ? annotableMediaImage.url : null;
-		previewHotspotImage.attr("src", imageUrl);
-		annotableImage.attr("src", imageUrl);
-		editorWrapper.css("display", annotableMediaImage ? "block" : "none");
-	}
-
-	function openEditHotspotModal() {
-		// do not rest currentX, currentY
-		resetAddHotspotForm(false);
-		const title = "Add a new hotspot the the image";
-		const url = "#TB_inline?&width=600&height=550&inlineId=my-content-id";
-		tb_show(title, url);
-	}
-
-	function closeEditHotspotModal() {
-		tb_remove();
-	}
-
-	function handleNewHotspot(imageData) {
-		const title = newSpotTitle.val();
-		const desc = newSpotDesc.val();
-
-		console.log("Desc: ", desc);
-
-		if (!title) {
-			alert("title is required");
-			return;
-		}
-
-		if (!desc) {
-			alert("description is required");
-			return;
-		}
-
-		const exist = getHotspotByCoordonatesId(currentX, currentY);
-
-		if (exist) {
-			exist.title = title;
-			exist.description = desc;
-			exist.image = imageData;
-		} else {
-			const locationId = getSpotLocationId(currentX, currentY);
-
-			const newHotspot = {
-				locationId,
-				// content:
-				// 	"<img src='" + imageData.url + "' alt='" + imageData.alt + "'>",
-				x: currentX,
-				y: currentY,
-				title,
-				description: desc,
-				image: imageData,
-				// shortcode: getSpotShortCode(locationId),
-			};
-
-			hotspots.push(newHotspot);
-			// console.log("New spot: ", hotspots);
-			addSpotToHotspotEditor(newHotspot.x, newHotspot.y);
-			addSpotToPreviewer(newHotspot.x, newHotspot.y);
-		}
-
-		// console.log("Spots: ", spots);
-		// $("#theElement-0").hotspot({
-		// 	mode: "display",
-		// 	data: hotspots,
-		// 	interactivity: "click",
-		// });
-
-		formatUI();
-		closeEditHotspotModal();
-		resetAddHotspotForm();
-	}
-
-	// function getPreviewSpot() {
-	// 	previewHotSpots = $("#theElement-0 .HotspotPlugin_Hotspot");
-	// 	return previewHotSpots;
-	// }
-
-	function previewHotspot(locationId) {
-		const hotspot = hotspots.find((spot) => spot.locationId === locationId);
-
-		if (!hotspot) {
-			alert("Invalid hotspot");
-			return;
-		}
-
-		// console.log("PREVIEW HOTSPOT");
-		previewSpotTitle.text(hotspot.title);
-		previewSpotDesc.html(hotspot.description);
-		const image = hotspot.image;
-		previewSpotDescImage.attr("src", image.url);
-		// console.log(previewSpotDescImage, image.url);
-		previewSpotWrapper.css("display", "block");
-	}
-
-	// function bindPreviewSpotListeners() {
-	// 	getPreviewSpot();
-	// 	previewHotSpots.map((index, spot) => {
-	// 		// console.log("-->>", spot);
-	// 		const previewSpot = $(spot);
-	// 		const wrapper = previewSpot.find(".HotspotPlugin_Hotspot_Hidden");
-
-	// 		// console.log("Wrapper: ", wrapper);
-	// 		wrapper.css("display", "none!impotant");
-
-	// 		// console.log(spot);
-	// 		previewSpot.click(function () {
-	// 			const locationIdEl = previewSpot.find(".Hotspot_locationId");
-	// 			// console.log("locationId: ", locationIdEl.text());
-	// 			previewHotspot(locationIdEl.text());
-	// 		});
-	// 	});
-	// }
-
-	function bindListeners() {
-		// if (annotatedImageHotspot) {
-		// 	$(window).on("resize", addSpotToPreviewer());
-		// }
-		// Medias Uploader
-		const spotImageUploader = bindMediaUploaderListeners(function (imageData) {
-			currentDescImage = imageData;
-			formatUI();
-		});
-
-		const annotableImageUploader = bindMediaUploaderListeners(function (
-			imageData
-		) {
-			throwIfNoImage(!imageData);
-			annotableMediaImage = imageData;
-			formatUI();
-		});
-
-		uploadDescImageBtn.click(function () {
-			spotImageUploader.open();
-		});
-
-		uploadHotspotImageBtn.click(function () {
-			annotableImageUploader.open();
-		});
-
-		// Buttons
-		saveHotspotBtn.click(function () {
-			throwIfNoImage();
-			handleNewHotspot(currentDescImage);
-			// previewHotspotImage.attr("src", currentDescImage.url);
-		});
-
-		deleteHotspotBtn.click(function () {
-			const locationId = getSpotLocationId(currentX, currentY);
-			hotspots = hotspots.filter((spot) => spot.locationId !== locationId);
-			// console.log("HOTSPOTS", hotspots);
-
-			// addSpotToPreviewer();
-			removePointToHotspotEditor(locationId);
-			closeEditHotspotModal();
-			resetAddHotspotForm();
-			// formatUI();
-		});
-
-		previewSpotCloseBtn.click(function () {
-			previewSpotWrapper.css("display", "none");
-		});
-
-		saveAnnotatedImageBtn.click(function () {
-			console.log("The page is: ", actionPageUrl);
-
-			const name = annotatedImageNameInput.val();
-
-			if (!name) {
-				alert("The name is required");
-				return;
-			}
-
-			if (hotspots.length === 0) {
-				alert("There is no hotspot to save");
-				return;
-			}
-
-			const payload = {
-				name,
-				// shortcode,
-				annotated_image: JSON.stringify(annotableMediaImage),
-				data: JSON.stringify(hotspots),
-			};
-
-			if (annotatedImageHotspot) {
-				payload.ID = annotatedImageHotspot.ID;
-			}
-
-			console.log("Payload: ", payload);
-
-			setLoading(true);
-
-			$.ajax({
-				method: "POST",
-				url: actionPageUrl,
-				data: JSON.stringify(payload),
-				contentType: "application/json; charset=utf-8",
-				dataType: "json",
-				success: function (res) {
-					//do what you want here...
-					console.log(res);
-					// window.location.href = "?page=wordpress-hotspot";
-					setLoading(false);
-					toast("Annotated Image saved");
-				},
-				error: function () {
-					setLoading(false);
-				},
-			});
-		});
-
-		// bindPreviewSpotListeners();
-	}
-
-	// function getPreviewSpotLocationids() {
-	// 	return previewHotSpots.map((spot) => {
-	// 		const previewSpot = $(spot);
-	// 		const locationId = previewSpot.find(".Hotspot_locationId");
-	// 		console.log("locationId: ", locationId);
-	// 	});
-	// }
-
-	function resetAddHotspotForm(resetCoordonates = true) {
-		// console.log("reseting form.....");
-		if (resetCoordonates) {
-			currentX = null;
-			currentY = null;
-		}
-		currentDescImage = null;
-		newSpotTitle.val("");
-		newSpotDesc.val("");
-		newSpotDescImage.attr("src", null);
-		formatUI();
-	}
-
-	function resetSpotPreviewer() {
-		previewSpotWrapper.css("display", "none");
-		previewSpotTitle.text("");
-		previewSpotDesc.text("");
-		previewHotspotImage.attr("src", null);
-	}
-
-	function getSpotLocationId(x, y) {
-		return `${x}-${y}`;
-	}
-
-	function getAnnotatedImageShortCode(locationId) {
-		return `${uuidv4()}-wordpress-hotspot`;
-	}
-
-	function prepareSpotEdition(spot) {
-		newSpotTitle.val(spot.title);
-		newSpotDesc.val(spot.description);
-		currentDescImage = spot.image;
-		currentX = spot.x;
-		currentY = spot.y;
-		formatUI();
-	}
-
-	function addSpotToHotspotEditor(x, y) {
-		const point = $(
-			`<div data-id="${getSpotLocationId(
-				x,
-				y
-			)}" style="cursor: pointer; width: 20px; height: 20px; border-radius:50%; background: red; position: absolute; top: calc(${y}% - 10px); left: calc(${x}% - 10px)"></div>`
-		);
-
-		point.click(function () {
-			const clickedSpot = getHotspotByCoordonatesId(x, y);
-			// console.log("spot clicked....", clickedSpot);
-			openEditHotspotModal(clickedSpot);
-			prepareSpotEdition(clickedSpot);
-		});
-
-		console.log(point);
-
-		editorWrapper.append(point);
-	}
-
-	function addSpotToPreviewer(x, y) {
-		// // console.log("Adding spot...........s: ", hotspots);
-		// $("#theElement-0").hotspot({
-		// 	mode: "display",
-		// 	data: hotspots, // [
-		// 	// 	{
-		// 	// 		x: 50,
-		// 	// 		y: 50,
-		// 	// 		// Title: "Roue",
-		// 	// 		// Message: "Les roues",
-		// 	// 	},
-		// 	// ],
-		// 	interactivity: "click",
-		// });
-		// bindPreviewSpotListeners();
-		const point = $(
-			`<div data-id="${getSpotLocationId(
-				x,
-				y
-			)}" style="cursor: pointer; width: 20px; height: 20px; border-radius:50%; background: #1abc9c; position: absolute; top: calc(${y}% - 10px); left: calc(${x}% - 10px)"></div>`
-		);
-
-		point.click(function () {
-			const clickedSpot = getHotspotByCoordonatesId(x, y);
-			// console.log("spot clicked....", clickedSpot);
-			// openEditHotspotModal(clickedSpot);
-			// prepareSpotEdition(clickedSpot);
-			if (!clickedSpot) {
-				alert("Invalid spot");
-				return;
-			}
-			previewHotspot(clickedSpot.locationId);
-		});
-
-		// console.log(point);
-
-		previewerWrapper.append(point);
-	}
-
-	function removePointToHotspotEditor(locationId) {
-		// const locationId = getSpotLocationId(x, y);
-		const selector = `[data-id="${locationId}"]`;
-
-		editorWrapper.find(selector).remove();
-		previewerWrapper.find(selector).remove();
-	}
-
-	function fillEditionForm() {
-		if (!annotatedImageHotspot) return;
-		annotatedImageNameInput.val(annotatedImageHotspot.name);
-		hotspots = annotatedImageHotspot.hotspots;
-		annotableMediaImage = annotatedImageHotspot.annotatedImage;
-
-		hotspots.map((spot) => {
-			addSpotToPreviewer(spot.x, spot.y);
-			addSpotToHotspotEditor(spot.x, spot.y);
-		});
-	}
-
-	function init() {
-		// mainPage.css("display", "none");
-		currentDescImage = null;
-		annotableMediaImage = null;
-		if (annotatedImageHotspot) {
-			fillEditionForm();
-		}
-		resetAddHotspotForm();
-		resetSpotPreviewer();
-		formatUI();
-		bindListeners();
-	}
-
-	function main() {
-		init();
-
-		// annotableImage.hotspot({
-		// 	showList: true,
-		// 	items: hotspots,
-		// 	onBeforeItemAdd: function (item) {
-		// 		if (item.content == "") {
-		// 			alert("Le contenu du hotspot ne peut pas être vide.");
-		// 			return false;
-		// 		}
-		// 		return true;
-		// 	},
-		// });
-
-		annotableImage.click(function (e) {
-			var offset = $(this).offset();
-			var width = $(this).width();
-			var height = $(this).height();
-
-			console.log(width, height);
-
-			var x = e.pageX - offset.left;
-			var y = e.pageY - offset.top;
-
-			currentX = (x / width) * 100;
-			currentY = (y / height) * 100;
-
-			// var content = null; //prompt("Entrez le contenu de votre hotspot :");
-			openEditHotspotModal();
-
-			// if (content != null && content != "") {
-			// 	var mediaUploader = wp.media({
-			// 		frame: "post",
-			// 		state: "insert",
-			// 		multiple: false,
-			// 	});
-			// 	mediaUploader.on("insert", function () {
-			// 		var imageData = mediaUploader
-			// 			.state()
-			// 			.get("selection")
-			// 			.first()
-			// 			.toJSON();
-			// 		var newHotspot = {
-			// 			content:
-			// 				"<img src='" + imageData.url + "' alt='" + imageData.alt + "'>",
-			// 			x: (x / width) * 100,
-			// 			y: (y / height) * 100,
-			// 		};
-			// 		hotspots.push(newHotspot);
-			// 		console.log(hotspots);
-
-			// 		// console.log("Spots: ", spots);
-			// 		$("#theElement-0").hotspot({
-			// 			mode: "display",
-			// 			data: hotspots, // [
-			// 			// 	{
-			// 			// 		x: 50,
-			// 			// 		y: 50,
-			// 			// 		// Title: "Roue",
-			// 			// 		// Message: "Les roues",
-			// 			// 	},
-			// 			// ],
-			// 			interactivity: "click",
-			// 		});
-
-			// 		addPointToHotspotEditor(newHotspot.x, newHotspot.y);
-
-			// 		// $("#theElement-0")
-			// 		// 	.hotspot("destroy")
-			// 		// 	.hotspot({
-			// 		// 		showList: true,
-			// 		// 		items: hotspots,
-			// 		// 		onBeforeItemAdd: function (item) {
-			// 		// 			if (item.content == "") {
-			// 		// 				alert("Le contenu du hotspot ne peut pas être vide.");
-			// 		// 				return false;
-			// 		// 			}
-			// 		// 			return true;
-			// 		// 		},
-			// 		// 	});
-
-			// 		// annotableImage
-			// 		// 	.hotspot("destroy")
-			// 		// 	.hotspot({
-			// 		// 		showList: true,
-			// 		// 		items: hotspots,
-			// 		// 		onBeforeItemAdd: function (item) {
-			// 		// 			if (item.content == "") {
-			// 		// 				alert("Le contenu du hotspot ne peut pas être vide.");
-			// 		// 				return false;
-			// 		// 			}
-			// 		// 			return true;
-			// 		// 		},
-			// 		// 	});
-			// 	});
-			// 	mediaUploader.open();
-			// } else if (content != null) {
-			// 	var newHotspot = {
-			// 		content: content,
-			// 		x: x,
-			// 		y: y,
-			// 	};
-			// 	hotspots.push(newHotspot);
-			// 	annotableImage.hotspot("destroy").hotspot({
-			// 		showList: true,
-			// 		items: hotspots,
-			// 		onBeforeItemAdd: function (item) {
-			// 			if (item.content == "") {
-			// 				alert("Le contenu du hotspot ne peut pas être vide.");
-			// 				return false;
-			// 			}
-			// 			return true;
-			// 		},
-			// 	});
-			// }
-		});
-	}
+  // UI Elements
+  const uploadDescImageBtn = $("#upload-desc-image-btn");
+  const previewHotspotImage = $("#preview-hotspot-image");
+  const annotableImage = $("#annotatable-image");
+
+  const uploadHotspotImageBtn = $("#upload-hotspot-image-btn");
+  const saveHotspotBtn = $("#save-hotspot-btn");
+  const deleteHotspotBtn = $("#delete-hotspot-btn");
+  const saveAnnotatedImageBtn = $("#save-annotated-image-btn");
+  const saveAnnotatedImageBtnText = $("#save-annotated-image-btn-text");
+
+  const newSpotDescImage = $("#desc-hotspot-image");
+  const newSpotTitle = $("#spot-title");
+  const newSpotDesc = $("#spot-desc");
+  const annotatedImageNameInput = $("#annotated-image-name-input");
+
+  const editorWrapper = $("#theElement-a");
+  const previewerWrapper = $("#theElement-0");
+
+  // let previewHotSpots = $("#theElement-0 .HotspotPlugin_Hotspot");
+  const previewSpotWrapper = $("#preview-spot-wrapper");
+  const previewSpotTitle = $("#preview-spot-title");
+  const previewSpotDescImage = $("#preview-spot-desc-image");
+  const previewSpotDesc = $("#preview-spot-desc");
+  const previewSpotCloseBtn = $("#preview-spot-close-btn");
+  const btnSaveLoader = $("#btn-save-loader");
+  // const hotspotEditWrapper = $(".hotspot-edit-wrapper");
+
+  // const mainPage = $("#main-page");
+  // const dataImageId = $("#data-image-id");
+  // const imageId = dataImageId.attr("data-imageId");
+
+  // console.log("id: ", dataImageId, imageId);
+
+  const annotableImageForm = $("#annotable-image-form");
+  // Endponts
+  const actionPageUrl = annotableImageForm.attr("data-page");
+
+  // Variables
+  let hotspots = [];
+  let currentDescImage = null;
+  let currentX = null;
+  let currentY = null;
+  let annotableMediaImage = null;
+  let shortcode = getAnnotatedImageShortCode();
+
+  let loading = false;
+
+  // alert(shortcode);
+  //   const annotatedImageSerialized = annotableImageForm.attr(
+  //     "data-annotatedImageHotspot"
+  //   );
+  //   // console.log("element: ", annotatedImageSerialized);
+  let annotatedImageHotspot = null;
+  //   if (annotatedImageSerialized) {
+  //     annotatedImageHotspot = deserializeImageHotspot(annotatedImageSerialized);
+  //   }
+
+  (async () => {
+    const url = annotableImageForm.attr("data-get-hotspot-endpoint");
+
+    console.log(url);
+    if (url) {
+      fetch(url)
+        .then((res) => res.json())
+        .then((res) => {
+          // console.log(res);
+
+          annotatedImageHotspot = {
+            ...res,
+            hotspots: JSON.parse(res.data),
+            annotatedImage: JSON.parse(res.annotated_image),
+          };
+          // console.log(decodedData);
+          // new ManageHotspot(decodedData.data);
+          console.log("AnnotatedImage: ", annotatedImageHotspot);
+
+          // Entry point
+          main();
+        });
+    } else {
+      throw new Error("ERROR: No url to get hotspot from db");
+    }
+  })();
+
+  // Utils functions
+  // -----------------------------------------
+  function bindMediaUploaderListeners(cb) {
+    var mediaUploader = wp.media({
+      frame: "post",
+      state: "insert",
+      multiple: false,
+    });
+
+    return mediaUploader.on("insert", function () {
+      var imageData = mediaUploader.state().get("selection").first().toJSON();
+
+      cb(imageData);
+    });
+  }
+
+  function throwIfNoImage(condition = !currentDescImage) {
+    if (condition) {
+      alert("There is no selected image");
+      return;
+    }
+  }
+
+  function uuidv4() {
+    return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, (c) =>
+      (
+        c ^
+        (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))
+      ).toString(16)
+    );
+  }
+
+  function setLoading(_) {
+    loading = _;
+    formatUI();
+  }
+
+  function toast(message, duration = 3000) {
+    Toastify({
+      text: message,
+      duration,
+      gravity: "bottom",
+      position: "right",
+      backgroundColor: "#1d2327",
+      stopOnFocus: true,
+    }).showToast();
+  }
+  // -----------------------------------------
+
+  // Functions
+  function formatUI() {
+    const btnSaveLoaderDisplay = loading ? "block" : "none";
+    const saveAnnotatedImageBtnTextDisplay = loading ? "none" : "block";
+    const btnSaveOpacity = loading ? 0.7 : 1;
+    const btnSaveText = loading ? "" : "Save Image";
+
+    // console.log(btnSaveLoader, btnSaveLoaderDisplay);
+
+    btnSaveLoader.css("display", btnSaveLoaderDisplay);
+    saveAnnotatedImageBtn.css("opacity", btnSaveOpacity);
+    // saveAnnotatedImageBtn.text(btnSaveText);
+    // saveAnnotatedImageBtnText.css("display", saveAnnotatedImageBtnTextDisplay);
+
+    if (currentDescImage) {
+      // editorWrapper.css("display", "block");
+      newSpotDescImage.attr("src", currentDescImage.url);
+    } else {
+      newSpotDescImage.attr("src", null);
+      // editorWrapper.css("display", "none");
+    }
+    setAnnotableMediaImage();
+  }
+
+  function deserializeImageHotspot(serialized) {
+    const image = JSON.parse(serialized);
+    const hotspots = JSON.parse(image.data);
+    const deserialized = {
+      ...image,
+      hotspots,
+      // hotspots: hotspots.map((spot) => ({
+      // 	...spot,
+      // 	image: JSON.parse(spot.image),
+      // })),
+      annotatedImage: JSON.parse(image.annotated_image),
+    };
+    return deserialized;
+  }
+
+  function getHotspotByCoordonatesId(x, y) {
+    const locationId = getSpotLocationId(x, y);
+    return hotspots.find((spot) => spot.locationId === locationId);
+  }
+
+  function setAnnotableMediaImage() {
+    const imageUrl = annotableMediaImage ? annotableMediaImage.url : null;
+    previewHotspotImage.attr("src", imageUrl);
+    annotableImage.attr("src", imageUrl);
+    editorWrapper.css("display", annotableMediaImage ? "block" : "none");
+  }
+
+  function openEditHotspotModal() {
+    // do not rest currentX, currentY
+    resetAddHotspotForm(false);
+    const title = "Add a new hotspot the the image";
+    const url = "#TB_inline?&width=600&height=550&inlineId=my-content-id";
+    tb_show(title, url);
+  }
+
+  function closeEditHotspotModal() {
+    tb_remove();
+  }
+
+  function handleNewHotspot(imageData) {
+    const title = newSpotTitle.val();
+    const desc = newSpotDesc.val();
+
+    console.log("Desc: ", desc);
+
+    if (!title) {
+      alert("title is required");
+      return;
+    }
+
+    if (!desc) {
+      alert("description is required");
+      return;
+    }
+
+    const exist = getHotspotByCoordonatesId(currentX, currentY);
+
+    if (exist) {
+      exist.title = title;
+      exist.description = desc;
+      exist.image = imageData;
+    } else {
+      const locationId = getSpotLocationId(currentX, currentY);
+
+      const newHotspot = {
+        locationId,
+        // content:
+        // 	"<img src='" + imageData.url + "' alt='" + imageData.alt + "'>",
+        x: currentX,
+        y: currentY,
+        title,
+        description: desc,
+        image: imageData,
+        // shortcode: getSpotShortCode(locationId),
+      };
+
+      hotspots.push(newHotspot);
+      // console.log("New spot: ", hotspots);
+      addSpotToHotspotEditor(newHotspot.x, newHotspot.y);
+      addSpotToPreviewer(newHotspot.x, newHotspot.y);
+    }
+
+    // console.log("Spots: ", spots);
+    // $("#theElement-0").hotspot({
+    // 	mode: "display",
+    // 	data: hotspots,
+    // 	interactivity: "click",
+    // });
+
+    formatUI();
+    closeEditHotspotModal();
+    resetAddHotspotForm();
+  }
+
+  // function getPreviewSpot() {
+  // 	previewHotSpots = $("#theElement-0 .HotspotPlugin_Hotspot");
+  // 	return previewHotSpots;
+  // }
+
+  function previewHotspot(locationId) {
+    const hotspot = hotspots.find((spot) => spot.locationId === locationId);
+
+    if (!hotspot) {
+      alert("Invalid hotspot");
+      return;
+    }
+
+    // console.log("PREVIEW HOTSPOT");
+    previewSpotTitle.text(hotspot.title);
+    previewSpotDesc.html(hotspot.description);
+    const image = hotspot.image;
+    previewSpotDescImage.attr("src", image.url);
+    // console.log(previewSpotDescImage, image.url);
+    previewSpotWrapper.css("display", "block");
+  }
+
+  // function bindPreviewSpotListeners() {
+  // 	getPreviewSpot();
+  // 	previewHotSpots.map((index, spot) => {
+  // 		// console.log("-->>", spot);
+  // 		const previewSpot = $(spot);
+  // 		const wrapper = previewSpot.find(".HotspotPlugin_Hotspot_Hidden");
+
+  // 		// console.log("Wrapper: ", wrapper);
+  // 		wrapper.css("display", "none!impotant");
+
+  // 		// console.log(spot);
+  // 		previewSpot.click(function () {
+  // 			const locationIdEl = previewSpot.find(".Hotspot_locationId");
+  // 			// console.log("locationId: ", locationIdEl.text());
+  // 			previewHotspot(locationIdEl.text());
+  // 		});
+  // 	});
+  // }
+
+  function bindListeners() {
+    // if (annotatedImageHotspot) {
+    // 	$(window).on("resize", addSpotToPreviewer());
+    // }
+    // Medias Uploader
+    const spotImageUploader = bindMediaUploaderListeners(function (imageData) {
+      currentDescImage = imageData;
+      formatUI();
+    });
+
+    const annotableImageUploader = bindMediaUploaderListeners(function (
+      imageData
+    ) {
+      throwIfNoImage(!imageData);
+      annotableMediaImage = imageData;
+      formatUI();
+    });
+
+    uploadDescImageBtn.click(function () {
+      spotImageUploader.open();
+    });
+
+    uploadHotspotImageBtn.click(function () {
+      annotableImageUploader.open();
+    });
+
+    // Buttons
+    saveHotspotBtn.click(function () {
+      throwIfNoImage();
+      handleNewHotspot(currentDescImage);
+      // previewHotspotImage.attr("src", currentDescImage.url);
+    });
+
+    deleteHotspotBtn.click(function () {
+      const locationId = getSpotLocationId(currentX, currentY);
+      hotspots = hotspots.filter((spot) => spot.locationId !== locationId);
+      // console.log("HOTSPOTS", hotspots);
+
+      // addSpotToPreviewer();
+      removePointToHotspotEditor(locationId);
+      closeEditHotspotModal();
+      resetAddHotspotForm();
+      // formatUI();
+    });
+
+    previewSpotCloseBtn.click(function () {
+      previewSpotWrapper.css("display", "none");
+    });
+
+    saveAnnotatedImageBtn.click(function () {
+      console.log("The page is: ", actionPageUrl);
+
+      const name = annotatedImageNameInput.val();
+
+      if (!name) {
+        alert("The name is required");
+        return;
+      }
+
+      if (hotspots.length === 0) {
+        alert("There is no hotspot to save");
+        return;
+      }
+
+      const payload = {
+        name,
+        // shortcode,
+        annotated_image: JSON.stringify(annotableMediaImage),
+        data: JSON.stringify(hotspots),
+      };
+
+      if (annotatedImageHotspot) {
+        payload.ID = annotatedImageHotspot.ID;
+      }
+
+      console.log("Payload: ", payload);
+
+      setLoading(true);
+
+      $.ajax({
+        method: "POST",
+        url: actionPageUrl,
+        data: JSON.stringify(payload),
+        contentType: "application/json; charset=utf-8",
+        dataType: "json",
+        success: function (res) {
+          //do what you want here...
+          console.log(res);
+          // window.location.href = "?page=wordpress-hotspot";
+          setLoading(false);
+          toast("Annotated Image saved");
+        },
+        error: function () {
+          setLoading(false);
+        },
+      });
+    });
+
+    // bindPreviewSpotListeners();
+  }
+
+  // function getPreviewSpotLocationids() {
+  // 	return previewHotSpots.map((spot) => {
+  // 		const previewSpot = $(spot);
+  // 		const locationId = previewSpot.find(".Hotspot_locationId");
+  // 		console.log("locationId: ", locationId);
+  // 	});
+  // }
+
+  function resetAddHotspotForm(resetCoordonates = true) {
+    // console.log("reseting form.....");
+    if (resetCoordonates) {
+      currentX = null;
+      currentY = null;
+    }
+    currentDescImage = null;
+    newSpotTitle.val("");
+    newSpotDesc.val("");
+    newSpotDescImage.attr("src", null);
+    formatUI();
+  }
+
+  function resetSpotPreviewer() {
+    previewSpotWrapper.css("display", "none");
+    previewSpotTitle.text("");
+    previewSpotDesc.text("");
+    previewHotspotImage.attr("src", null);
+  }
+
+  function getSpotLocationId(x, y) {
+    return `${x}-${y}`;
+  }
+
+  function getAnnotatedImageShortCode(locationId) {
+    return `${uuidv4()}-wordpress-hotspot`;
+  }
+
+  function prepareSpotEdition(spot) {
+    newSpotTitle.val(spot.title);
+    newSpotDesc.val(spot.description);
+    currentDescImage = spot.image;
+    currentX = spot.x;
+    currentY = spot.y;
+    formatUI();
+  }
+
+  function addSpotToHotspotEditor(x, y) {
+    const point = $(
+      `<div data-id="${getSpotLocationId(
+        x,
+        y
+      )}" style="cursor: pointer; width: 20px; height: 20px; border-radius:50%; background: red; position: absolute; top: calc(${y}% - 10px); left: calc(${x}% - 10px)"></div>`
+    );
+
+    point.click(function () {
+      const clickedSpot = getHotspotByCoordonatesId(x, y);
+      // console.log("spot clicked....", clickedSpot);
+      openEditHotspotModal(clickedSpot);
+      prepareSpotEdition(clickedSpot);
+    });
+
+    console.log(point);
+
+    editorWrapper.append(point);
+  }
+
+  function addSpotToPreviewer(x, y) {
+    // // console.log("Adding spot...........s: ", hotspots);
+    // $("#theElement-0").hotspot({
+    // 	mode: "display",
+    // 	data: hotspots, // [
+    // 	// 	{
+    // 	// 		x: 50,
+    // 	// 		y: 50,
+    // 	// 		// Title: "Roue",
+    // 	// 		// Message: "Les roues",
+    // 	// 	},
+    // 	// ],
+    // 	interactivity: "click",
+    // });
+    // bindPreviewSpotListeners();
+    const point = $(
+      `<div data-id="${getSpotLocationId(
+        x,
+        y
+      )}" style="cursor: pointer; width: 20px; height: 20px; border-radius:50%; background: #1abc9c; position: absolute; top: calc(${y}% - 10px); left: calc(${x}% - 10px)"></div>`
+    );
+
+    point.click(function () {
+      const clickedSpot = getHotspotByCoordonatesId(x, y);
+      // console.log("spot clicked....", clickedSpot);
+      // openEditHotspotModal(clickedSpot);
+      // prepareSpotEdition(clickedSpot);
+      if (!clickedSpot) {
+        alert("Invalid spot");
+        return;
+      }
+      previewHotspot(clickedSpot.locationId);
+    });
+
+    // console.log(point);
+
+    previewerWrapper.append(point);
+  }
+
+  function removePointToHotspotEditor(locationId) {
+    // const locationId = getSpotLocationId(x, y);
+    const selector = `[data-id="${locationId}"]`;
+
+    editorWrapper.find(selector).remove();
+    previewerWrapper.find(selector).remove();
+  }
+
+  function fillEditionForm() {
+    if (!annotatedImageHotspot) return;
+    annotatedImageNameInput.val(annotatedImageHotspot.name);
+    hotspots = annotatedImageHotspot.hotspots;
+    annotableMediaImage = annotatedImageHotspot.annotatedImage;
+
+    hotspots.map((spot) => {
+      addSpotToPreviewer(spot.x, spot.y);
+      addSpotToHotspotEditor(spot.x, spot.y);
+    });
+  }
+
+  function init() {
+    // mainPage.css("display", "none");
+    currentDescImage = null;
+    annotableMediaImage = null;
+    if (annotatedImageHotspot) {
+      fillEditionForm();
+    }
+    resetAddHotspotForm();
+    resetSpotPreviewer();
+    formatUI();
+    bindListeners();
+  }
+
+  function main() {
+    init();
+
+    // annotableImage.hotspot({
+    // 	showList: true,
+    // 	items: hotspots,
+    // 	onBeforeItemAdd: function (item) {
+    // 		if (item.content == "") {
+    // 			alert("Le contenu du hotspot ne peut pas être vide.");
+    // 			return false;
+    // 		}
+    // 		return true;
+    // 	},
+    // });
+
+    annotableImage.click(function (e) {
+      var offset = $(this).offset();
+      var width = $(this).width();
+      var height = $(this).height();
+
+      console.log(width, height);
+
+      var x = e.pageX - offset.left;
+      var y = e.pageY - offset.top;
+
+      currentX = (x / width) * 100;
+      currentY = (y / height) * 100;
+
+      // var content = null; //prompt("Entrez le contenu de votre hotspot :");
+      openEditHotspotModal();
+
+      // if (content != null && content != "") {
+      // 	var mediaUploader = wp.media({
+      // 		frame: "post",
+      // 		state: "insert",
+      // 		multiple: false,
+      // 	});
+      // 	mediaUploader.on("insert", function () {
+      // 		var imageData = mediaUploader
+      // 			.state()
+      // 			.get("selection")
+      // 			.first()
+      // 			.toJSON();
+      // 		var newHotspot = {
+      // 			content:
+      // 				"<img src='" + imageData.url + "' alt='" + imageData.alt + "'>",
+      // 			x: (x / width) * 100,
+      // 			y: (y / height) * 100,
+      // 		};
+      // 		hotspots.push(newHotspot);
+      // 		console.log(hotspots);
+
+      // 		// console.log("Spots: ", spots);
+      // 		$("#theElement-0").hotspot({
+      // 			mode: "display",
+      // 			data: hotspots, // [
+      // 			// 	{
+      // 			// 		x: 50,
+      // 			// 		y: 50,
+      // 			// 		// Title: "Roue",
+      // 			// 		// Message: "Les roues",
+      // 			// 	},
+      // 			// ],
+      // 			interactivity: "click",
+      // 		});
+
+      // 		addPointToHotspotEditor(newHotspot.x, newHotspot.y);
+
+      // 		// $("#theElement-0")
+      // 		// 	.hotspot("destroy")
+      // 		// 	.hotspot({
+      // 		// 		showList: true,
+      // 		// 		items: hotspots,
+      // 		// 		onBeforeItemAdd: function (item) {
+      // 		// 			if (item.content == "") {
+      // 		// 				alert("Le contenu du hotspot ne peut pas être vide.");
+      // 		// 				return false;
+      // 		// 			}
+      // 		// 			return true;
+      // 		// 		},
+      // 		// 	});
+
+      // 		// annotableImage
+      // 		// 	.hotspot("destroy")
+      // 		// 	.hotspot({
+      // 		// 		showList: true,
+      // 		// 		items: hotspots,
+      // 		// 		onBeforeItemAdd: function (item) {
+      // 		// 			if (item.content == "") {
+      // 		// 				alert("Le contenu du hotspot ne peut pas être vide.");
+      // 		// 				return false;
+      // 		// 			}
+      // 		// 			return true;
+      // 		// 		},
+      // 		// 	});
+      // 	});
+      // 	mediaUploader.open();
+      // } else if (content != null) {
+      // 	var newHotspot = {
+      // 		content: content,
+      // 		x: x,
+      // 		y: y,
+      // 	};
+      // 	hotspots.push(newHotspot);
+      // 	annotableImage.hotspot("destroy").hotspot({
+      // 		showList: true,
+      // 		items: hotspots,
+      // 		onBeforeItemAdd: function (item) {
+      // 			if (item.content == "") {
+      // 				alert("Le contenu du hotspot ne peut pas être vide.");
+      // 				return false;
+      // 			}
+      // 			return true;
+      // 		},
+      // 	});
+      // }
+    });
+  }
 });
 
 // jQuery(document).ready(function ($) {

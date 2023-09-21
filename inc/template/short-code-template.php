@@ -7,16 +7,18 @@ if (!function_exists('deserializeImageData')) {
   }
 }
 
+// die($get_hotspot_endpoint);
+
 if (!$data) return 'No image to display !';
 
-$imageData = deserializeImageData($data[0]);
+$imageData = deserializeImageData($data);
 
 // print_r($imageData->annotated_image);die();
 ?>
 
 <div class="app-st-container">
   <div class="app-st-annotated-image">
-    <div id="theElement-0" data-image='<?php echo json_encode($imageData) ?>'>
+    <div id="theElement-0" data-get-hotspot-endpoint="<?php echo $get_hotspot_endpoint; ?>">
       <img id="preview-hotspot-image" src="<?php echo $imageData->annotated_image->url ?>" width="100%" alt="Annotated image" />
     </div>
   </div>

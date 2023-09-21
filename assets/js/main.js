@@ -197,12 +197,13 @@
       return $(window).width() < 700;
     }
   }
+
   const annotableImage = $("#theElement-0");
   const jsonData = annotableImage.attr("data-image");
 
   // console.log("its works!!");
 
-  const decodedData = decodeImageData(jsonData);
+  // const decodedData = decodeImageData(jsonData);
   // console.log(decodedData);
 
   // annotableImage.hotspot({
@@ -211,15 +212,36 @@
   // 	interactivity: "click",
   // });
 
-  new ManageHotspot(decodedData.data);
+  const url = annotableImage.attr("data-get-hotspot-endpoint");
+
+  if (url) {
+    fetch(url)
+      .then((res) => res.json())
+      .then((res) => {
+        // console.log(res);
+
+        const decodedData = {
+          ...res,
+          data: JSON.parse(res.data),
+          annotated_image: JSON.parse(res.annotated_image),
+        };
+        // console.log(decodedData);
+        new ManageHotspot(decodedData.data);
+      });
+  } else {
+    throw new Error("ERROR: No url to get hotspot from db");
+  }
+
+  // console.log(decodedData);
+  // new ManageHotspot(decodedData.data);
 
   // Functions
-  function decodeImageData(jsonData) {
-    const encodedData = JSON.parse(jsonData);
-    const decodedData = {
-      ...encodedData,
-      data: JSON.parse(encodedData.data),
-    };
-    return decodedData;
-  }
+  // function decodeImageData(jsonData) {
+  //   const encodedData = JSON.parse(jsonData);
+  //   const decodedData = {
+  //     ...encodedData,
+  //     data: JSON.parse(encodedData.data),
+  //   };
+  //   return decodedData;
+  // }
 })(jQuery);

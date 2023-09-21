@@ -3,7 +3,7 @@
   Plugin Name: Wordpress Hotspot
   Description: wordpress hotspot.
   Author: Zenidata
-  Version: 1.0.0
+  Version: 2.0.0
   Author URI: https://zenidata.com/
   Text Domain: wordpress-hotspot
 */
